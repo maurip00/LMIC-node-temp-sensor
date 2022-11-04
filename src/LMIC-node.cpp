@@ -53,13 +53,23 @@
 #include "LMIC-node.h"
 
 
+
 //  █ █ █▀▀ █▀▀ █▀▄   █▀▀ █▀█ █▀▄ █▀▀   █▀▄ █▀▀ █▀▀ ▀█▀ █▀█
 //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▄ █▀▀ █ █  █  █ █
 //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 const uint8_t payloadBufferLength = 4;    // Adjust to fit max payload length
+// Data wire is plugged into port 2 on the Arduino
+#define ONE_WIRE_BUS 4
 
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature.
+DallasTemperature sensors(&oneWire);
 
 //  █ █ █▀▀ █▀▀ █▀▄   █▀▀ █▀█ █▀▄ █▀▀   █▀▀ █▀█ █▀▄
 //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▀ █ █ █ █
@@ -729,6 +739,13 @@ void processWork(ostime_t doWorkJobTimeStamp)
         uint16_t counterValue = getCounterValue();
         ostime_t timestamp = os_getTime();
 
+        // Start up the dallas library
+        sensors.begin();
+        sensors.requestTemperatures(); // Send the command to get temperatures
+        float tempC = sensors.getTempCByIndex(0);
+        // encode float temperature as int
+        uint32_t tempInt = tempC * 100;
+
         #ifdef USE_DISPLAY
             // Interval and Counter values are combined on a single row.
             // This allows to keep the 3rd row empty which makes the
@@ -738,14 +755,25 @@ void processWork(ostime_t doWorkJobTimeStamp)
             display.print("I:");
             display.print(doWorkIntervalSeconds);
             display.print("s");        
-            display.print(" Ctr:");
-            display.print(counterValue);
+            //display.print(" Ctr:");
+            display.print(" Temp:");
+            //display.print(counterValue);
+            display.print(tempC);
         #endif
         #ifdef USE_SERIAL
             printEvent(timestamp, "Input data collected", PrintTarget::Serial);
             printSpaces(serial, MESSAGE_INDENT);
             serial.print(F("COUNTER value: "));
             serial.println(counterValue);
+            if (tempC != DEVICE_DISCONNECTED_C)
+            {
+                Serial.print("Temperature for the device 1 (index 0) is: ");
+                Serial.println(tempC);
+            }
+            else
+            {
+                Serial.println("Error: Could not read temperature data");
+            }
         #endif    
 
         // For simplicity LMIC-node will try to send an uplink
@@ -764,13 +792,17 @@ void processWork(ostime_t doWorkJobTimeStamp)
         }
         else
         {
-            // Prepare uplink payload.
-            uint8_t fPort = 10;
-            payloadBuffer[0] = counterValue >> 8;
-            payloadBuffer[1] = counterValue & 0xFF;
-            uint8_t payloadLength = 2;
-
-            scheduleUplink(fPort, payloadBuffer, payloadLength);
+            //prepare the payload
+            uint8_t fPort10 = 10;
+            uint8_t payloadLength = 4;
+            // add uplink temperature to payload
+            payloadBuffer[0] = highByte(tempInt);
+            payloadBuffer[1] = lowByte(tempInt);
+            // add uplink counter to the payload.
+            payloadBuffer[2] = counterValue >> 8;
+            payloadBuffer[3] = counterValue & 0xFF;
+            
+            scheduleUplink(fPort10, payloadBuffer, payloadLength);
         }
     }
 }    
