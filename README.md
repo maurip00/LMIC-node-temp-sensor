@@ -1,3 +1,5 @@
+Simple temperature sensor (DS18B20) add to LMIC-node | the great example to rule them all
+
 This repository contains LMIC-node, an example LoRaWAN application for a node for The Things Network.  
 Get your node quickly up and running with LMIC-node.
 
