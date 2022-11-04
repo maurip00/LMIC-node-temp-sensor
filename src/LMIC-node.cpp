@@ -62,7 +62,8 @@
 #include <DallasTemperature.h>
 
 const uint8_t payloadBufferLength = 4;    // Adjust to fit max payload length
-// Data wire is plugged into port 2 on the Arduino
+
+// Data wire is plugged into GPIO4 on the board
 #define ONE_WIRE_BUS 4
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
@@ -755,9 +756,9 @@ void processWork(ostime_t doWorkJobTimeStamp)
             display.print("I:");
             display.print(doWorkIntervalSeconds);
             display.print("s");        
-            //display.print(" Ctr:");
+            //display.print(" Ctr:"); //Commented out the counter and inserting the temperature on the line below
             display.print(" Temp:");
-            //display.print(counterValue);
+            //display.print(counterValue); //Commented out the counter and inserting the temperature value on the line below
             display.print(tempC);
         #endif
         #ifdef USE_SERIAL
@@ -767,7 +768,7 @@ void processWork(ostime_t doWorkJobTimeStamp)
             serial.println(counterValue);
             if (tempC != DEVICE_DISCONNECTED_C)
             {
-                Serial.print("Temperature for the device 1 (index 0) is: ");
+                Serial.print("Temperature for the sensor (index 0) is: ");
                 Serial.println(tempC);
             }
             else
